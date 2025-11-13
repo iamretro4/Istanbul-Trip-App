@@ -141,6 +141,12 @@ export default function Home() {
     };
   }, [trip, showToast]);
 
+  // All hooks must be called before any conditional returns
+  const allActivities = useMemo(() => {
+    if (!trip) return [];
+    return Object.values(trip.days).flatMap(day => day.activities);
+  }, [trip]);
+
   // Show loading state until mounted and trip is loaded
   if (!mounted || !trip) {
     return (
@@ -154,9 +160,6 @@ export default function Home() {
   }
 
   const currentDay = trip.days[selectedDay] || { date: selectedDay, activities: [] };
-  const allActivities = useMemo(() => {
-    return Object.values(trip.days).flatMap(day => day.activities);
-  }, [trip.days]);
 
   const handleActivitySave = async (activity: Activity) => {
     const updatedTrip = { ...trip };
