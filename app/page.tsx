@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Trip, Activity, Suggestion, Expense, RouteMode } from '@/lib/types';
 import { format } from 'date-fns';
 import { saveTrip, getTrip, exportTrips, importTrips } from '@/lib/storage';
@@ -95,52 +95,6 @@ export default function Home() {
     loadTrip();
   }, [mounted]);
 
-  // Sync trip to Supabase whenever it changes (debounced)
-  const tripSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSyncedTripRef = useRef<string>('');
-  
-  useEffect(() => {
-    if (!trip || !isSupabaseConfigured()) return;
-    
-    // Create a stable key for the trip to prevent duplicate syncs
-    const tripKey = JSON.stringify({
-      id: trip.id,
-      name: trip.name,
-      daysCount: Object.keys(trip.days).length,
-      activitiesCount: Object.values(trip.days).reduce((sum, day) => sum + day.activities.length, 0),
-      updatedAt: trip.updatedAt,
-    });
-    
-    // Skip if already synced
-    if (lastSyncedTripRef.current === tripKey) {
-      return;
-    }
-    
-    // Clear previous timeout
-    if (tripSyncTimeoutRef.current) {
-      clearTimeout(tripSyncTimeoutRef.current);
-    }
-    
-    // Set new timeout for debounced sync
-    tripSyncTimeoutRef.current = setTimeout(async () => {
-      setIsSyncing(true);
-      const result = await syncTripToSupabase(trip);
-      if (result.success) {
-        lastSyncedTripRef.current = tripKey;
-        // Silent sync - don't show toast for every change
-      } else {
-        showToast('Sync failed, saved locally', 'error');
-      }
-      setIsSyncing(false);
-    }, 2000); // Increased debounce to 2 seconds
-    
-    return () => {
-      if (tripSyncTimeoutRef.current) {
-        clearTimeout(tripSyncTimeoutRef.current);
-      }
-    };
-  }, [trip, showToast]);
-
   // All hooks must be called before any conditional returns
   const allActivities = useMemo(() => {
     if (!trip) return [];
@@ -180,11 +134,6 @@ export default function Home() {
     setTrip(updatedTrip);
     saveTrip(updatedTrip);
     
-    // Sync to Supabase
-    if (isSupabaseConfigured()) {
-      await syncTripToSupabase(updatedTrip);
-    }
-    
     setIsActivityModalOpen(false);
     setEditingActivity(null);
     showToast(editingActivity ? 'Activity updated' : 'Activity added', 'success');
@@ -197,11 +146,6 @@ export default function Home() {
     updatedTrip.days[selectedDay] = day;
     setTrip(updatedTrip);
     saveTrip(updatedTrip);
-    
-    // Sync to Supabase
-    if (isSupabaseConfigured()) {
-      await syncTripToSupabase(updatedTrip);
-    }
     
     showToast('Activity deleted', 'success');
   };
@@ -269,9 +213,6 @@ export default function Home() {
     updatedTrip.budget.total = budget;
     setTrip(updatedTrip);
     saveTrip(updatedTrip);
-    if (isSupabaseConfigured()) {
-      await syncTripToSupabase(updatedTrip);
-    }
   };
 
   const handleExpenseAdd = async (expense: Expense) => {
@@ -279,9 +220,6 @@ export default function Home() {
     updatedTrip.budget.expenses.push(expense);
     setTrip(updatedTrip);
     saveTrip(updatedTrip);
-    if (isSupabaseConfigured()) {
-      await syncTripToSupabase(updatedTrip);
-    }
   };
 
   const handleExpenseDelete = async (expenseId: string) => {
@@ -289,9 +227,6 @@ export default function Home() {
     updatedTrip.budget.expenses = updatedTrip.budget.expenses.filter(e => e.id !== expenseId);
     setTrip(updatedTrip);
     saveTrip(updatedTrip);
-    if (isSupabaseConfigured()) {
-      await syncTripToSupabase(updatedTrip);
-    }
   };
 
 
@@ -308,7 +243,7 @@ export default function Home() {
           <div className="mb-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200/50 rounded-xl shadow-sm backdrop-blur-sm">
             <p className="text-sm font-medium text-green-700 flex items-center gap-2">
               <span className="text-lg">✓</span>
-              Cloud sync enabled - Changes sync automatically between devices
+              Cloud sync enabled - Sync on page reload or manual save
             </p>
           </div>
         )}
