@@ -231,8 +231,8 @@ export default function Home() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 text-gray-900">
-      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-7xl">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 text-gray-900 overflow-x-hidden">
+      <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-4 md:py-8 max-w-7xl">
         {isSyncing && (
           <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/50 rounded-xl shadow-sm flex items-center gap-3 backdrop-blur-sm">
             <div className="spinner"></div>
