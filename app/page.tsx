@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Trip, Activity, Suggestion, Expense, RouteMode } from '@/lib/types';
 import { format } from 'date-fns';
 import { saveTrip, getTrip, exportTrips, importTrips } from '@/lib/storage';
@@ -28,18 +28,24 @@ export default function Home() {
   const [showMap, setShowMap] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [supabaseEnabled, setSupabaseEnabled] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { showToast } = useToast();
 
   const handleRoutesCalculated = useCallback((calculatedRoutes: any[]) => {
     setRoutes(calculatedRoutes);
   }, []);
 
+  // Ensure component is mounted before rendering client-only content
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    // Only run on client side
+    if (!mounted || typeof window === 'undefined') return;
+
     // Check if Supabase is configured
     setSupabaseEnabled(isSupabaseConfigured());
-
-    // Get trip ID from URL or use default
-    if (typeof window === 'undefined') return;
     
     const urlParams = new URLSearchParams(window.location.search);
     const tripIdFromUrl = urlParams.get('trip');
@@ -87,27 +93,56 @@ export default function Home() {
     };
 
     loadTrip();
-  }, []);
+  }, [mounted]);
 
-  // Sync trip to Supabase whenever it changes
+  // Sync trip to Supabase whenever it changes (debounced)
+  const tripSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSyncedTripRef = useRef<string>('');
+  
   useEffect(() => {
-    if (trip && isSupabaseConfigured()) {
-      const syncTimer = setTimeout(async () => {
-        setIsSyncing(true);
-        const result = await syncTripToSupabase(trip);
-        if (result.success) {
-          // Silent sync - don't show toast for every change
-        } else {
-          showToast('Sync failed, saved locally', 'error');
-        }
-        setIsSyncing(false);
-      }, 1000); // Debounce sync by 1 second
-
-      return () => clearTimeout(syncTimer);
+    if (!trip || !isSupabaseConfigured()) return;
+    
+    // Create a stable key for the trip to prevent duplicate syncs
+    const tripKey = JSON.stringify({
+      id: trip.id,
+      name: trip.name,
+      daysCount: Object.keys(trip.days).length,
+      activitiesCount: Object.values(trip.days).reduce((sum, day) => sum + day.activities.length, 0),
+      updatedAt: trip.updatedAt,
+    });
+    
+    // Skip if already synced
+    if (lastSyncedTripRef.current === tripKey) {
+      return;
     }
-  }, [trip]);
+    
+    // Clear previous timeout
+    if (tripSyncTimeoutRef.current) {
+      clearTimeout(tripSyncTimeoutRef.current);
+    }
+    
+    // Set new timeout for debounced sync
+    tripSyncTimeoutRef.current = setTimeout(async () => {
+      setIsSyncing(true);
+      const result = await syncTripToSupabase(trip);
+      if (result.success) {
+        lastSyncedTripRef.current = tripKey;
+        // Silent sync - don't show toast for every change
+      } else {
+        showToast('Sync failed, saved locally', 'error');
+      }
+      setIsSyncing(false);
+    }, 2000); // Increased debounce to 2 seconds
+    
+    return () => {
+      if (tripSyncTimeoutRef.current) {
+        clearTimeout(tripSyncTimeoutRef.current);
+      }
+    };
+  }, [trip, showToast]);
 
-  if (!trip) {
+  // Show loading state until mounted and trip is loaded
+  if (!mounted || !trip) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
