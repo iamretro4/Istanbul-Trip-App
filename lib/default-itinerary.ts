@@ -2,30 +2,28 @@ import { Trip, Activity, Day } from './types';
 import { TAKS_INN_HOTEL, ISTANBUL_SUGGESTIONS } from './istanbul-data';
 import { format } from 'date-fns';
 
-// Get tomorrow's date
-const getTomorrow = () => {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(0, 0, 0, 0);
-  return tomorrow;
+// Get trip start date (November 14, 2025 morning)
+const getStartDate = () => {
+  const startDate = new Date(2025, 10, 14); // November is month 10 (0-indexed)
+  startDate.setHours(9, 0, 0, 0); // 9:00 AM
+  return startDate;
 };
 
-// Get Tuesday (4 days after tomorrow)
-const getTuesday = (startDate: Date) => {
-  const tuesday = new Date(startDate);
-  tuesday.setDate(startDate.getDate() + 4); // Tuesday is 4 days after tomorrow (if tomorrow is Friday)
-  tuesday.setHours(23, 59, 59, 999);
-  return tuesday;
+// Get trip end date (November 18, 2025 4 PM)
+const getEndDate = () => {
+  const endDate = new Date(2025, 10, 18); // November is month 10 (0-indexed)
+  endDate.setHours(16, 0, 0, 0); // 4:00 PM
+  return endDate;
 };
 
 export function createDefaultItinerary(): Trip {
-  const tomorrow = getTomorrow();
-  const tuesday = getTuesday(tomorrow);
+  const startDate = getStartDate();
+  const endDate = getEndDate();
   
   const days: Record<string, Day> = {};
   
-  // Day 1 (Tomorrow) - Bazaars and Local Markets
-  const day1 = new Date(tomorrow);
+  // Day 1 (November 14) - Bazaars and Local Markets
+  const day1 = new Date(startDate);
   const day1Key = format(day1, 'yyyy-MM-dd');
   days[day1Key] = {
     date: day1.toISOString(),
@@ -83,9 +81,9 @@ export function createDefaultItinerary(): Trip {
     ],
   };
 
-  // Day 2 - Asian Side
-  const day2 = new Date(tomorrow);
-  day2.setDate(tomorrow.getDate() + 1);
+  // Day 2 (November 15) - Asian Side
+  const day2 = new Date(startDate);
+  day2.setDate(startDate.getDate() + 1);
   const day2Key = format(day2, 'yyyy-MM-dd');
   days[day2Key] = {
     date: day2.toISOString(),
@@ -143,9 +141,9 @@ export function createDefaultItinerary(): Trip {
     ],
   };
 
-  // Day 3 - Landmarks with Local Twist
-  const day3 = new Date(tomorrow);
-  day3.setDate(tomorrow.getDate() + 2);
+  // Day 3 (November 16) - Landmarks with Local Twist
+  const day3 = new Date(startDate);
+  day3.setDate(startDate.getDate() + 2);
   const day3Key = format(day3, 'yyyy-MM-dd');
   days[day3Key] = {
     date: day3.toISOString(),
@@ -207,9 +205,9 @@ export function createDefaultItinerary(): Trip {
     ],
   };
 
-  // Day 4 - Creative Activities
-  const day4 = new Date(tomorrow);
-  day4.setDate(tomorrow.getDate() + 3);
+  // Day 4 (November 17) - Creative Activities
+  const day4 = new Date(startDate);
+  day4.setDate(startDate.getDate() + 3);
   const day4Key = format(day4, 'yyyy-MM-dd');
   days[day4Key] = {
     date: day4.toISOString(),
@@ -279,10 +277,10 @@ export function createDefaultItinerary(): Trip {
     ],
   };
 
-  // Day 5 (Tuesday) - Bosphorus & Final Day
-  const day5Key = format(tuesday, 'yyyy-MM-dd');
+  // Day 5 (November 18) - Bosphorus & Final Day
+  const day5Key = format(endDate, 'yyyy-MM-dd');
   days[day5Key] = {
-    date: tuesday.toISOString(),
+    date: endDate.toISOString(),
     activities: [
       {
         id: 'day5-1',
@@ -311,30 +309,20 @@ export function createDefaultItinerary(): Trip {
         location: { lat: 41.0778, lng: 29.0433, address: 'Bebek Fish Restaurants, Bebek' },
         category: 'restaurant',
         neighborhood: 'Bebek',
-        startTime: '14:00',
+        startTime: '13:00',
         duration: 90,
         website: 'http://www.bebekbalikci.net/#',
       },
       {
         id: 'day5-4',
         name: 'Tarabya & KIYI Restaurant',
-        description: 'Visit Tarabya area and enjoy excellent fish restaurant with beautiful Bosphorus views.',
+        description: 'Visit Tarabya area and enjoy excellent fish restaurant with beautiful Bosphorus views. Trip ends at 4 PM.',
         location: { lat: 41.1100, lng: 29.0500, address: 'KIYI Restaurant, Tarabya' },
         category: 'restaurant',
         neighborhood: 'Tarabya',
-        startTime: '16:00',
-        duration: 180,
+        startTime: '14:30',
+        duration: 90,
         website: 'http://www.kiyi.com.tr/',
-      },
-      {
-        id: 'day5-5',
-        name: 'Nisantasi Shopping',
-        description: 'Upscale area (like Kolonaki) with expensive shops, modern cafes and restaurants.',
-        location: { lat: 41.0470, lng: 28.9850, address: 'Nisantasi, Sisli' },
-        category: 'shopping',
-        neighborhood: 'Nisantasi',
-        startTime: '19:00',
-        duration: 120,
       },
     ],
   };
@@ -342,8 +330,8 @@ export function createDefaultItinerary(): Trip {
   return {
     id: 'istanbul-trip-2025',
     name: 'Istanbul Trip 2025',
-    startDate: tomorrow.toISOString(),
-    endDate: tuesday.toISOString(),
+    startDate: startDate.toISOString(),
+    endDate: endDate.toISOString(),
     days,
     budget: {
       total: 0,
