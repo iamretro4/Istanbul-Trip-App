@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useGoogleMaps } from '@/lib/google-maps-loader';
 import { Activity, RouteMode } from '@/lib/types';
 import { calculateRoutesBetweenActivities, formatDistance, formatDuration } from '@/lib/maps';
@@ -25,6 +25,7 @@ export default function RoutePlanner({
   const [routes, setRoutes] = useState<any[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
   const directionsServiceRef = useRef<google.maps.DirectionsService | null>(null);
+  const lastCalculationRef = useRef<string>('');
   const { isLoaded } = useGoogleMaps();
 
   useEffect(() => {
@@ -33,7 +34,7 @@ export default function RoutePlanner({
     }
   }, [isLoaded]);
 
-  const calculateRoutes = async () => {
+  const calculateRoutes = useCallback(async () => {
     if (activities.length === 0 || !directionsServiceRef.current) {
       return;
     }
@@ -116,16 +117,33 @@ export default function RoutePlanner({
     } finally {
       setIsCalculating(false);
     }
-  };
+  }, [activities, hotelLocation, routeMode, onRoutesCalculated]);
+
+  // Create a stable key for activities to prevent unnecessary recalculations
+  const activitiesKey = useMemo(() => {
+    return JSON.stringify({
+      ids: activities.map(a => a.id),
+      count: activities.length,
+      hotel: hotelLocation ? `${hotelLocation.lat},${hotelLocation.lng}` : '',
+      mode: routeMode,
+    });
+  }, [activities, hotelLocation, routeMode]);
 
   useEffect(() => {
-    if (activities.length > 0 && isLoaded) {
+    // Prevent duplicate calculations
+    if (lastCalculationRef.current === activitiesKey) {
+      return;
+    }
+
+    if (activities.length > 0 && isLoaded && directionsServiceRef.current) {
+      lastCalculationRef.current = activitiesKey;
       calculateRoutes();
-    } else {
+    } else if (activities.length === 0) {
+      lastCalculationRef.current = '';
       setRoutes([]);
       onRoutesCalculated([]);
     }
-  }, [activities, routeMode, isLoaded, hotelLocation]);
+  }, [activitiesKey, isLoaded, calculateRoutes, activities.length, onRoutesCalculated]);
 
   if (!isLoaded) {
     return (

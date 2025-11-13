@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Trip, Activity, Suggestion, Expense, RouteMode } from '@/lib/types';
 import { format } from 'date-fns';
 import { saveTrip, getTrip, exportTrips, importTrips } from '@/lib/storage';
@@ -29,6 +29,10 @@ export default function Home() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [supabaseEnabled, setSupabaseEnabled] = useState(false);
   const { showToast } = useToast();
+
+  const handleRoutesCalculated = useCallback((calculatedRoutes: any[]) => {
+    setRoutes(calculatedRoutes);
+  }, []);
 
   useEffect(() => {
     // Check if Supabase is configured
@@ -115,7 +119,9 @@ export default function Home() {
   }
 
   const currentDay = trip.days[selectedDay] || { date: selectedDay, activities: [] };
-  const allActivities = Object.values(trip.days).flatMap(day => day.activities);
+  const allActivities = useMemo(() => {
+    return Object.values(trip.days).flatMap(day => day.activities);
+  }, [trip.days]);
 
   const handleActivitySave = async (activity: Activity) => {
     const updatedTrip = { ...trip };
@@ -344,7 +350,7 @@ export default function Home() {
                 hotelLocation={trip.hotelLocation}
                 routeMode={routeMode}
                 onRouteModeChange={setRouteMode}
-                onRoutesCalculated={setRoutes}
+                onRoutesCalculated={handleRoutesCalculated}
               />
             )}
           </div>

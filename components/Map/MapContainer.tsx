@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
 import { useGoogleMaps } from '@/lib/google-maps-loader';
 import { Location, Activity } from '@/lib/types';
@@ -44,9 +44,27 @@ export default function MapContainer({
   const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
   const { isLoaded } = useGoogleMaps();
 
+  // Memoize activities key to prevent unnecessary recalculations
+  const activitiesKey = useMemo(() => {
+    return JSON.stringify({
+      ids: activities.map(a => a.id),
+      count: activities.length,
+      hotel: hotelLocation ? `${hotelLocation.lat},${hotelLocation.lng}` : '',
+    });
+  }, [activities, hotelLocation]);
+
+  const lastBoundsKeyRef = useRef<string>('');
+
   // All hooks must be called before any early returns
   useEffect(() => {
     if (map && activities.length > 0 && typeof window !== 'undefined' && window.google && window.google.maps) {
+      // Prevent duplicate fitBounds calls
+      if (lastBoundsKeyRef.current === activitiesKey) {
+        return;
+      }
+
+      lastBoundsKeyRef.current = activitiesKey;
+      
       const bounds = new window.google.maps.LatLngBounds();
       
       if (hotelLocation) {
@@ -57,12 +75,36 @@ export default function MapContainer({
         bounds.extend(new window.google.maps.LatLng(activity.location.lat, activity.location.lng));
       });
 
-      map.fitBounds(bounds);
+      // Use setTimeout to debounce fitBounds
+      const timeoutId = setTimeout(() => {
+        if (map) {
+          map.fitBounds(bounds);
+        }
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
     }
-  }, [map, activities, hotelLocation]);
+  }, [map, activitiesKey, activities.length, hotelLocation]);
+
+  const routesKey = useMemo(() => {
+    return JSON.stringify({
+      count: routes.length,
+      ids: routes.map((r: any) => r.id).join(','),
+      mode: routeMode,
+    });
+  }, [routes, routeMode]);
+
+  const lastRoutesKeyRef = useRef<string>('');
 
   useEffect(() => {
     if (!map || typeof window === 'undefined' || !window.google || !window.google.maps) return;
+
+    // Prevent duplicate route rendering
+    if (lastRoutesKeyRef.current === routesKey) {
+      return;
+    }
+
+    lastRoutesKeyRef.current = routesKey;
 
     // Clear previous routes
     if (directionsRendererRef.current) {
@@ -98,7 +140,7 @@ export default function MapContainer({
         directionsRendererRef.current = null;
       }
     };
-  }, [map, routes, routeMode]);
+  }, [map, routesKey, routes.length, routeMode]);
 
   // Early return AFTER all hooks
   if (!isLoaded) {
